@@ -18,6 +18,10 @@ class CyralGimmeDbToken < Formula
     sha256 cellar: :any_skip_relocation, x86_64_linux:   "a2b2b9c4896e7d0fdafb0e02cc53aec821ccdc22605191af24266c318129cf0d"
   end
 
+  # I could not find any Apache-2.0 license reference in the pypi source tarball
+  # Nor could I find any source code repository for this project
+  disable! date: "2023-06-16", because: "not open source project"
+
   depends_on "rust" => :build # for cryptography
   depends_on "cffi"
   depends_on "openssl@1.1"
