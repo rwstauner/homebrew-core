@@ -4,6 +4,7 @@ class Ettercap < Formula
   url "https://github.com/Ettercap/ettercap/archive/v0.8.3.1.tar.gz"
   sha256 "d0c3ef88dfc284b61d3d5b64d946c1160fd04276b448519c1ae4438a9cdffaf3"
   license "GPL-2.0-or-later"
+  revision 1
   head "https://github.com/Ettercap/ettercap.git", branch: "master"
 
   bottle do
@@ -23,11 +24,12 @@ class Ettercap < Formula
   depends_on "gtk+3"
   depends_on "libnet"
   depends_on "ncurses" if DevelopmentTools.clang_build_version >= 1000
-  depends_on "openssl@1.1"
+  depends_on "openssl@3"
   depends_on "pcre"
 
+  uses_from_macos "bison" => :build
+  uses_from_macos "flex" => :build
   uses_from_macos "curl"
-  uses_from_macos "flex"
   uses_from_macos "libpcap"
   uses_from_macos "ncurses"
   uses_from_macos "zlib"
@@ -37,10 +39,7 @@ class Ettercap < Formula
     # https://gitlab.kitware.com/cmake/cmake/issues/19531
     ENV.append_to_cflags "-I#{Formula["harfbuzz"].opt_include}/harfbuzz"
 
-    # Fix build error on wdg_file.c: fatal error: menu.h: No such file or directory
-    ENV.append_to_cflags "-I#{Formula["ncurses"].opt_include}/ncursesw" if OS.linux?
-
-    args = std_cmake_args + %W[
+    args = %W[
       -DBUNDLED_LIBS=OFF
       -DCMAKE_INSTALL_RPATH=#{rpath}
       -DENABLE_CURSES=ON
@@ -54,12 +53,20 @@ class Ettercap < Formula
       -DINSTALL_DESKTOP=ON
       -DINSTALL_SYSCONFDIR=#{etc}
     ]
-    args << "-DPOLKIT_DIR=#{share}/polkit-1/actions/" if OS.linux?
 
-    mkdir "build" do
-      system "cmake", "..", *args
-      system "make", "install"
+    if OS.linux?
+      # Fix build error on wdg_file.c: fatal error: menu.h: No such file or directory
+      ENV.append_to_cflags "-I#{Formula["ncurses"].opt_include}/ncursesw"
+
+      # Avoid picking up system libcurl headers
+      ENV.append_to_cflags "-I#{Formula["curl"].opt_include}"
+
+      args << "-DPOLKIT_DIR=#{share}/polkit-1/actions/"
     end
+
+    system "cmake", "-S", ".", "-B", "build", *args, *std_cmake_args
+    system "cmake", "--build", "build"
+    system "cmake", "--install", "build"
   end
 
   test do
